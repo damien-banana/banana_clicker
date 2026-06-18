@@ -992,3 +992,60 @@ body::after {
   transform: translateY(-1px);
 }
 
+/* ─── Leaderboard ─────────────────────────────────────────────────────────── */
+
+.leaderboard-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.leaderboard-row {
+  cursor: default;
+  gap: 10px;
+}
+
+.leaderboard-row:hover {
+  transform: none;
+  border-color: transparent;
+}
+
+.leaderboard-rank {
+  font-size: 22px;
+  width: 36px;
+  text-align: center;
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--banana-dark);
+}
+
+.leaderboard-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 24px 8px;
+}
+
+.leaderboard-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+
+.leaderboard-submit-btn {
+  flex: 1;
+  background: var(--green);
+  color: #fff;
+  border-color: var(--green-dark);
+}
+
+.leaderboard-submit-btn:hover {
+  background: var(--green-dark);
+  color: #fff;
+}
+

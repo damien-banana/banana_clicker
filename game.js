@@ -1,6 +1,8 @@
 ﻿const SAVE_KEY = "bananaClickerSave";
 const LEGACY_SAVE_KEY = "bananaEmpireSave";
 const SOUND_KEY = "bananaClickerSound";
+const PLAYER_ID_KEY = "bananaClickerPlayerId";
+const PLAYER_NAME_KEY = "bananaClickerPlayerName";
 
 let audioCtx = null;
 let soundEnabled = localStorage.getItem(SOUND_KEY) !== "off";
@@ -1008,4 +1010,105 @@ setInterval(() => {
   if (!gameStarted || goldenVisible || Math.random() >= 0.15) return;
   spawnGolden();
 }, 30000);
+
+// ─── Leaderboard ────────────────────────────────────────────────────────────
+
+const leaderboardListEl = document.getElementById("leaderboard-list");
+
+function getOrCreatePlayerId() {
+  let id = localStorage.getItem(PLAYER_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(PLAYER_ID_KEY, id);
+  }
+  return id;
+}
+
+function renderLeaderboard(entries) {
+  if (!leaderboardListEl) return;
+  if (!entries || entries.length === 0) {
+    leaderboardListEl.innerHTML = '<p class="leaderboard-empty">Aucun score enregistré.</p>';
+    return;
+  }
+  leaderboardListEl.innerHTML = entries
+    .map((entry, i) => {
+      const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+      const prestige = entry.prestigePoints > 0 ? ` · ⭐ ${entry.prestigePoints}` : "";
+      return `
+        <div class="shop-item leaderboard-row">
+          <div class="leaderboard-rank">${medal}</div>
+          <div class="item-info">
+            <div class="item-name">${escapeHtml(entry.name)}</div>
+            <div class="item-desc">${formatNumber(entry.score)} bananes${prestige}</div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function fetchLeaderboard() {
+  if (!leaderboardListEl) return;
+  leaderboardListEl.innerHTML = '<p class="leaderboard-empty">Chargement…</p>';
+  try {
+    const res = await fetch("/api/leaderboard");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderLeaderboard(data.entries);
+  } catch {
+    leaderboardListEl.innerHTML = '<p class="leaderboard-empty">Impossible de charger le classement.</p>';
+  }
+}
+
+async function submitLeaderboardScore() {
+  const score = Math.floor(state.lifetimeEarned);
+  if (score <= 0) {
+    showToast("Aucun score à envoyer !");
+    return;
+  }
+  let name = localStorage.getItem(PLAYER_NAME_KEY);
+  if (!name) {
+    name = prompt("Entre ton pseudo pour le classement (max 32 caractères) :");
+    if (!name || name.trim().length === 0) return;
+    name = name.trim();
+    localStorage.setItem(PLAYER_NAME_KEY, name);
+  }
+
+  try {
+    const res = await fetch("/api/leaderboard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        playerId: getOrCreatePlayerId(),
+        name,
+        score,
+        lifetimeClicks: Math.floor(state.lifetimeClicks),
+        prestigePoints: Math.floor(state.prestigePoints),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    showToast("Score envoyé ! 🍌");
+    fetchLeaderboard();
+  } catch (err) {
+    showToast("Erreur : " + err.message);
+  }
+}
+
+document.getElementById("leaderboard-submit-btn")?.addEventListener("click", submitLeaderboardScore);
+document.getElementById("leaderboard-refresh-btn")?.addEventListener("click", fetchLeaderboard);
+
+document.querySelectorAll(".tab").forEach((tab) => {
+  if (tab.dataset.tab === "leaderboard") {
+    tab.addEventListener("click", fetchLeaderboard);
+  }
+});
 
